@@ -9,6 +9,10 @@ const securityHeaders = [
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
 ];
 
+// Karobar (inventory app, separate Vercel project) is served at /karobar on this domain.
+// KAROBAR_URL is its deployment origin, e.g. https://karobar.vercel.app; unset = no rewrite.
+const karobarUrl = process.env.KAROBAR_URL?.replace(/\/+$/, "");
+
 const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
@@ -22,7 +26,15 @@ const nextConfig: NextConfig = {
     },
   },
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    // /karobar sends its own headers (it needs camera access for the barcode scanner)
+    return [{ source: "/((?!karobar(?:/|$)).*)", headers: securityHeaders }];
+  },
+  async rewrites() {
+    if (!karobarUrl) return [];
+    return [
+      { source: "/karobar", destination: `${karobarUrl}/karobar` },
+      { source: "/karobar/:path+", destination: `${karobarUrl}/karobar/:path+` },
+    ];
   },
 };
 
